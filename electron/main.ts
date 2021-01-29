@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 import installExtension, {
@@ -6,8 +6,37 @@ import installExtension, {
 } from 'electron-devtools-installer';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+import electronOauth2 from 'electron-oauth2';
 
 let mainWindow: Electron.BrowserWindow | null;
+
+const oauthConfig = {
+  clientId: process.env.PANCAKE_CLIENT_ID,
+  clientSecret: process.env.PANCAKE_CLIENT_SECRET,
+  authorizationUrl: 'http://github.com/login/oauth/authorize',
+  tokenUrl: 'https://github.com/login/oauth/access_token',
+  useBasicAuthorizationHeader: false,
+  redirectUri: 'http://localhost',
+};
+
+// 770
+const githubOAuth = electronOauth2(oauthConfig, {
+  alwaysOnTop: true,
+  autoHideMenuBar: true,
+  WebPreferences: { nodeIntegration: false },
+});
+
+ipcMain.on('github-oauth', (event, arg) => {
+  console.log('event');
+  githubOAuth.getAccessToken({}).then(
+    (token) => {
+      event.sender.send('github-oath-reply', token);
+    },
+    (err) => {
+      console.log('Error getting token:', err);
+    }
+  );
+});
 
 class AppUpdater {
   constructor() {
